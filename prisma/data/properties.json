@@ -10,7 +10,8 @@
       "bathRoomCount": 2,
       "maxGuestCount": 5,
       "hostId": "f1234567-89ab-cdef-0123-456789abcdef",
-      "rating": 5
+      "rating": 5,
+      "amenities": ["Wifi", "Pool", "Kitchen"]
     },
     {
       "id": "h0123456-78f0-1234-5678-9abcdef01234",
@@ -22,7 +23,8 @@
       "bathRoomCount": 2,
       "maxGuestCount": 4,
       "hostId": "e2345678-90bc-def0-0123-456789abcdef",
-      "rating": 4
+      "rating": 4,
+      "amenities": ["Wifi", "Gym", "Air Conditioning", "TV"]
     },
     {
       "id": "i1234567-89f0-1234-5678-9abcdef01234",
@@ -34,7 +36,8 @@
       "bathRoomCount": 1,
       "maxGuestCount": 3,
       "hostId": "d3456789-01cd-def0-1234-56789abcdef0",
-      "rating": 5
+      "rating": 5,
+      "amenities": ["Wifi", "Kitchen", "Free Parking"]
     },
     {
       "id": "j2345678-90f1-2345-6789-abcdef012345",
@@ -46,7 +49,8 @@
       "bathRoomCount": 3,
       "maxGuestCount": 8,
       "hostId": "c4567890-12de-f012-3456-789abcdef012",
-      "rating": 5
+      "rating": 5,
+      "amenities": ["Pool", "Air Conditioning", "TV", "Gym"]
     },
     {
       "id": "k3456789-01f2-3456-789a-bcdef0123456",
@@ -58,9 +62,10 @@
       "bathRoomCount": 2,
       "maxGuestCount": 6,
       "hostId": "b5678901-23ef-0123-4567-89abcdef0123",
-      "rating": 4
+      "rating": 4,
+      "amenities": ["Wifi", "Heating", "Washer", "Dryer"]
     },
-	{
+    {
       "id": "a9876543-21dc-4321-ba98-fedcba098765",
       "title": "Charming Canal Apartment",
       "description": "Experience authentic Amsterdam living in this cozy canal-side apartment with classic Dutch architecture and modern comforts.",
@@ -70,7 +75,8 @@
       "bathRoomCount": 1,
       "maxGuestCount": 4,
       "hostId": "d2345678-90ab-cdef-1234-567890abcdef",
-      "rating": 5
+      "rating": 5,
+      "amenities": ["Wifi", "Air Conditioning", "Free Parking"]
     }
   ]
 }
