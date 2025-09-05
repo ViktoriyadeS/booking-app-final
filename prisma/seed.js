@@ -58,12 +58,10 @@ async function main() {
     });
   }
 
-  // --- Properties ---
-  for (const property of properties) {
-    const createdProperty = await prisma.property.upsert({
-      where: { id: property.id },
-      update: {},
-      create: {
+  // Seed Properties
+for (const property of properties) {
+    const createdProperty = await prisma.property.create({
+      data: {
         id: property.id,
         title: property.title,
         description: property.description,
@@ -76,26 +74,24 @@ async function main() {
         host: { connect: { id: property.hostId } },
       },
     });
-
-    
-    // Connect amenities for this property
-    if (property.amenityIds && property.amenityIds.length > 0) {
-        for (const amenityId of property.amenityIds) {
-            await prisma.propertyAmenity.upsert({
-                where: {
-                propertyId_amenityId: {
-                    propertyId: createdProperty.id,
-                    amenityId
-            } 
-        },
-        update: {}, // nothing to update
-        create: {
-          propertyId: createdProperty.id,
-          amenityId
+  
+    // Connect amenities by name
+    if (property.amenities && property.amenities.length > 0) {
+      for (const amenityName of property.amenities) {
+        const amenity = await prisma.amenity.findUnique({
+          where: { name: amenityName },
+        });
+  
+        if (amenity) {
+          await prisma.propertyAmenity.create({
+            data: {
+              propertyId: createdProperty.id,
+              amenityId: amenity.id,
+            },
+          });
         }
-      });
+      }
     }
-  }
   }
 
   // --- Bookings ---
