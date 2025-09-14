@@ -9,6 +9,7 @@ import log from "../middleware/logMiddleware.js";
 import * as Sentry from "@sentry/node";
 import * as Tracing from "@sentry/tracing";
 import errorHandlerSentry from "../middleware/errorHandlerSentry.js";
+import 'dotenv/config';
 
 const app = express();
 //Setry Intilize

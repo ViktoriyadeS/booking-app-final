@@ -1,24 +1,37 @@
 import { Router } from "express";
-import pkg from "@prisma/client";
 import { authenticate, authorize } from "../middleware/auth.js";
+import { 
+  createProperty, 
+  getProperties, 
+  getPropertyById, 
+  updateProperty, 
+  deleteProperty, 
+  assignAmentitiesToProperty } from "../services/propertyServices.js";
 
-const { PrismaClient } = pkg;
-const prisma = new PrismaClient();
+
 const propertiesRouter = Router();
 
-// CREATE property (host only)
+// CREATE property (host or admin)
 propertiesRouter.post(
   "/",
   authenticate,
   authorize(["host"]),
   async (req, res, next) => {
     try {
-      const property = await prisma.property.create({
-        data: {
-          ...req.body,
-          hostId: req.account.id,
-        },
-      });
+      let hostId;
+
+      if (req.account.type === "admin") {
+        // Admin must provide hostId in body
+        if (!req.body.hostId) {
+          return res.status(400).json({ message: "Admin must provide a hostId" });
+        }
+        hostId = req.body.hostId;
+      } else {
+        // Host uses their own ID from token
+        hostId = req.account.id;
+      }
+
+      const property = await createProperty(req.body, hostId);
       res.status(201).json(property);
     } catch (err) {
       next(err);
@@ -26,26 +39,27 @@ propertiesRouter.post(
   }
 );
 
-// GET all properties; optional: by location and/or pricePerNight
+
+// GET all properties; optional: filters
 propertiesRouter.get("/", async (req, res, next) => {
   try {
     const { location, pricePerNight } = req.query;
     const filters = {};
-
+    console.log(`location: ${location}; price: ${pricePerNight}`)
     if (location) {
       //partial matches allowed
-      filters.location = { contains: location, mode: "insensitive" };
+      filters.location = { contains: location };
     }
-
+    console.log(filters)
     if (pricePerNight) {
-      // price >= user input
-      filters.pricePerNight = { gte: Number(pricePerNight) };
+      // price = user input
+      const price = Number(pricePerNight);
+      if (!isNaN(price)) {
+        filters.pricePerNight = { equals: price } //strict match
+      }
     }
 
-    const properties = await prisma.property.findMany({
-      where: filters,
-      include: { host: true, amenities: true, bookings: true },
-    });
+    const properties = await getProperties(filters)
 
     res.status(200).json(properties);
   } catch (err) {
@@ -56,10 +70,7 @@ propertiesRouter.get("/", async (req, res, next) => {
 // GET property by ID
 propertiesRouter.get("/:id", async (req, res, next) => {
   try {
-    const property = await prisma.property.findUnique({
-      where: { id: req.params.id },
-      include: { amenities: true, host: true, reviews: true, bookings: true },
-    });
+    const property = await getPropertyById(req.params.id)
     if (!property)
       return res.status(404).json({ message: "Property not found" });
     res.json(property);
@@ -75,22 +86,17 @@ propertiesRouter.put(
   authorize(["host"]),
   async (req, res, next) => {
     try {
-      const property = await prisma.property.findUnique({
-        where: { id: req.params.id },
-      });
+      const property = await getPropertyById(req.params.id)
       if (!property) {
         return res
           .status(404)
           .json({ message: `Property with id ${req.params.id} is not found!` });
-      } else if (property.hostId !== req.account.id) {
+      } else if (req.account.type !== "admin" && property.hostId !== req.account.id) {
         return res.status(403).json({
           message: "Forbidden: you can only update your own properties!",
         });
       }
-      const updated = await prisma.property.update({
-        where: { id: req.params.id },
-        data: req.body,
-      });
+      const updated = await updateProperty(req.params.id, req.body)
       res.status(200).json(updated);
     } catch (err) {
       next(err);
@@ -105,9 +111,7 @@ propertiesRouter.delete(
   authorize(["host"]),
   async (req, res, next) => {
     try {
-      const property = await prisma.property.findUnique({
-        where: { id: req.params.id },
-      });
+      const property = await getPropertyById(req.params.id)
       if (!property) {
         return res
           .status(404)
@@ -117,7 +121,7 @@ propertiesRouter.delete(
           message: "Forbidden: you can only delete your own properties!",
         });
       }
-      await prisma.property.delete({ where: { id: req.params.id } });
+      await deleteProperty(req.params.id)
       res.json({ message: "Property deleted" });
     } catch (err) {
       next(err);
@@ -133,34 +137,15 @@ propertiesRouter.post(
   authorize(["host"]),
   async (req, res) => {
     try {
-      const { amenities } = req.body;
-      const property = await prisma.property.findUnique({
-        where: { id: req.params.id },
-      });
-
+      const property = await getPropertyById(req.params.id)
       if (!property) {
         return res.status(404).json({ message: "Property not found!" });
       } else if (property.hostId !== req.account.id) {
         return res.status(403).json({ message: "Forbidden" });
       }
       //Find all amenties by Name
-      const allAmenities = await prisma.amenity.findMany({
-        where: { name: { in: amenities } },
-      });
-      if (allAmenities.length < 1)
-        return res.status(404).json({ message: "No matching amenties found!" });
-      // Create propertyAmenity links
-      const links = await Promise.all(
-        allAmenities.map((amenity) =>
-          prisma.propertyAmenity.create({
-            data: {
-              propertyId: property.id,
-              amenityId: amenity.id,
-            },
-          })
-        )
-      );
-
+      const links = await assignAmentitiesToProperty(property.id, req.body.amenities)
+      if (!links) return res.status(404).json({message: "No matching amenties found!"})
       res.json({ message: "Amenities assigned", links });
     } catch (err) {
       next(err);

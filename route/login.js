@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 const loginRouter = Router();
 
 loginRouter.post("/", async (req, res, next) => {
-  const secretKey = process.env.AUTH_SECRET_KEY || "my-secret-key";
+  const secretKey = process.env.AUTH_SECRET_KEY || 'my_secret_key';
   const { username, password } = req.body;
 
   try {
@@ -38,10 +38,26 @@ loginRouter.post("/", async (req, res, next) => {
       }
     }
 
+    // Check admins
+    account = await prisma.admin.findUnique({ where: { username } });
+    if (account) {
+      if (account.password === password) {
+        const token = jwt.sign({ id: account.id, type: "admin" }, secretKey, {
+          expiresIn: "1h",
+        });
+        return res.json({
+          message: "Succesfully logged in as an ADMIN!",
+          token,
+        });
+      } else {
+        return res.status(401).json({ message: "Invalid credentials!" });
+      }
+    }
+
     //When no user/host accounts found
     res.status(404).json({ message: "Username not found!" });
   } catch (err) {
-    next(err)
+    next(err);
   }
 });
 

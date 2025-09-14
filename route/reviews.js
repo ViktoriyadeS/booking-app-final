@@ -1,9 +1,7 @@
 import { Router } from "express";
-import pkg from "@prisma/client";
 import { authenticate, authorize } from "../middleware/auth.js";
+import * as reviewServices from "../services/reviewServices.js";
 
-const { PrismaClient } = pkg;
-const prisma = new PrismaClient();
 const reviewsRouter = Router();
 
 //CREATE review (only for user)
@@ -13,10 +11,7 @@ reviewsRouter.post(
   authorize(["user"]),
   async (req, res, next) => {
     try {
-      const review = await prisma.review.create({
-        data: req.body,
-        userId: req.account.id,
-      });
+      const review = await reviewServices.createReview()
       res.status(201).json({ message: "Review is posted!" });
     } catch (error) {
       next(error);
@@ -25,9 +20,11 @@ reviewsRouter.post(
 );
 
 //GET all
+// GET all reviews (optional: filter by userId or propertyId)
 reviewsRouter.get("/", async (req, res, next) => {
   try {
-    const reviews = await prisma.review.findMany();
+    const { userId, propertyId } = req.query;
+    const reviews = await reviewServices.getReviews({ userId, propertyId });
     res.status(200).json(reviews);
   } catch (error) {
     next(error);
@@ -38,9 +35,7 @@ reviewsRouter.get("/", async (req, res, next) => {
 reviewsRouter.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const review = await prisma.review.findUnique({
-      where: { id: id },
-    });
+    const review = await reviewServices.getReviewById(id)
     if (!review) {
       res.status(404).json({
         message: `Review with id ${id} is not found`,
@@ -60,18 +55,16 @@ reviewsRouter.put(
   async (req, res, next) => {
     try {
       const { id } = req.params;
-      const review = await prisma.review.findUnique({
-        where: { id: id },
-      });
+      const review = await reviewServices.getReviewById(id)
       if (!review) {
         res.status(404).json({
           message: `Review with id ${id} is not found`,
         });
       }
-      const updated = await prisma.review.update({
-        where: { id: id },
-        data: req.body,
-      });
+      if (req.account.type !== "admin" && review.userId !== req.account.id) {
+      return res.status(403).json({ message: "Unauthorized: only your own reviews can be updated" });
+    }
+      const updated = await reviewServices.updateReview(id, req.body)
       res.status(200).json(updated);
     } catch (error) {
       next(error);
@@ -87,17 +80,16 @@ reviewsRouter.delete(
   async (req, res) => {
     try {
       const { id } = req.params;
-      const review = await prisma.review.findUnique({
-        where: { id: id },
-      });
+      const review = await reviewServices.getReviewById(id)
       if (!review) {
         res.status(404).json({
           message: `Review with id ${id} is not found`,
         });
       }
-      await prisma.review.delete({
-        where: { id: id },
-      });
+      if (req.account.type !== "admin" && review.userId !== req.account.id) {
+      return res.status(403).json({ message: "Unauthorized: only your own reviews can be deleted" });
+    }
+      await reviewServices.deleteReview(id)
       res.status(200).json("Review is deleted!");
     } catch (error) {
       next(error);

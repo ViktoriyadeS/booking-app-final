@@ -14,6 +14,17 @@ async function main() {
   
   console.log("Seeding database...");
 
+  // --- Admin --- 
+  await prisma.admin.upsert({
+    where: { username: "admin" },
+    update: {},
+    create: {
+      username: "admin",
+      password: "admin123", 
+      email: "admin@example.com",
+    },
+  });
+
   // --- Users ---
   for (const user of users) {
     await prisma.user.upsert({

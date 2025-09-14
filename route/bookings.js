@@ -1,9 +1,9 @@
 import { Router } from "express";
-import pkg from "@prisma/client";
 import { authenticate, authorize } from "../middleware/auth.js";
+import * as bookingServices from "../services/bookingServices.js";
+import { getPropertyById } from "../services/propertyServices.js";
+import { getUserById } from "../services/userServices.js";
 
-const { PrismaClient } = pkg;
-const prisma = new PrismaClient();
 const bookingsRouter = Router();
 
 //CREATE booking (user only)
@@ -13,15 +13,52 @@ bookingsRouter.post(
   authorize(["user"]),
   async (req, res, next) => {
     try {
-      const booking = await prisma.booking.create({
-        data: {
-          ...req.body,
-          userId: req.account.id,
-        },
+      const { userId, propertyId, checkinDate, checkoutDate, numberOfGuests, totalPrice, bookingStatus } = req.body;
+
+      // Check: property exists
+      const property = await getPropertyById(propertyId)
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      let bookingUserId;
+
+      if (req.account.type === "admin") {
+        // Admin can assign booking to any user
+        if (!userId) {
+          return res
+            .status(400)
+            .json({ message: "Admin must provide a userId for booking" });
+        }
+        const user = await getUserById(userId);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        bookingUserId = userId;
+      } else {
+        // Users can only book for themselves
+        const user = await getUserById(req.account.id)
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        bookingUserId = req.account.id;
+      }
+
+      const booking = await bookingServices.createBooking({
+          userId: bookingUserId,
+          propertyId,
+          checkinDate,
+          checkoutDate,
+          numberOfGuests,
+          totalPrice,
+          bookingStatus
+        }
+      );
+
+      res.status(201).json({
+        message: "Congratulations! Property is booked!",
+        booking,
       });
-      res
-        .status(201)
-        .json({ message: "Congratulations! Property is booked!" }, booking);
     } catch (error) {
       next(error);
     }
@@ -31,30 +68,22 @@ bookingsRouter.post(
 //GET all bookings; optional: GET by userID
 bookingsRouter.get("/", async (req, res, next) => {
   try {
-    const { userId } = req.query;
-    if (userId) {
-      const bookings = await prisma.booking.findMany({
-        where: { userId: userId },
-      });
-      if (!bookings)
-        return res
-          .status(404)
-          .json({ message: "Bookings not found for this user" });
-      res.status(200).json(bookings);
+    const bookings = await bookingServices.getBookings(req.query.userId);
+    if (req.query.userId && bookings.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Bookings not found for this user" });
     }
-    const allBookings = await prisma.booking.findMany();
-    res.status(200).json(allBookings);
+    res.status(200).json(bookings);
   } catch (error) {
     next(error);
   }
 });
+
 //GET by ID;
 bookingsRouter.get("/:id", async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const booking = await prisma.booking.findUnique({
-      where: { id: id },
-    });
+    const booking = await bookingServices.getBookingById(req.params.id);
     if (!booking) return res.status(404).json({ message: "Booking not found" });
     res.status(200).json(booking);
   } catch (error) {
@@ -69,21 +98,20 @@ bookingsRouter.put(
   authorize(["user"]),
   async (req, res, next) => {
     try {
-      const { id } = req.params.id;
-      const booking = await prisma.booking.findUnique({
-        where: { id: id },
-      });
-      if (!booking) {
-        return res.status(404).json({ message: "Booking is not found" });
-      } else if (booking.userId !== req.account.id) {
-        return res.status(403).json({
-          message: "Unauthorized: you can only update your own bookings",
-        });
+      const booking = await bookingServices.getBookingById(req.params.id);
+      if (!booking)
+        return res.status(404).json({ message: "Booking not found" });
+      if (req.account.type !== "admin" && booking.userId !== req.account.id) {
+        return res
+          .status(403)
+          .json({
+            message: "Unauthorized: only your own bookings can be updated",
+          });
       }
-      const updated = await prisma.booking.update({
-        where: { id: id },
-        data: req.body,
-      });
+      const updated = await bookingServices.updateBooking(
+        req.params.id,
+        req.body
+      );
       res.status(200).json(updated);
     } catch (error) {
       next(error);
@@ -98,21 +126,18 @@ bookingsRouter.delete(
   authorize(["user"]),
   async (req, res, next) => {
     try {
-      const { id } = req.params;
-      const booking = await prisma.booking.findUnique({
-        where: { id: id },
-      });
-      if (!booking) {
-        return res.status(404).json({ message: "Booking is not found" });
-      } else if (booking.userId !== req.account.id) {
-        return res.status(403).json({
-          message: "Unauthorized: you can only delete your own bookings",
-        });
+      const booking = await bookingServices.getBookingById(req.params.id);
+      if (!booking)
+        return res.status(404).json({ message: "Booking not found" });
+      if (req.account.type !== "admin" && booking.userId !== req.account.id) {
+        return res
+          .status(403)
+          .json({
+            message: "Unauthorized: only your own bookings can be deleted",
+          });
       }
-      await prisma.booking.delete({
-        where: { id: id },
-      });
-      res.status(200).json({ message: "Booking is deleted!" });
+      await bookingServices.deleteBooking(req.params.id);
+      res.status(200).json({ message: "Booking deleted successfully" });
     } catch (error) {
       next(error);
     }

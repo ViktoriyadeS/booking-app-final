@@ -1,23 +1,18 @@
 import { Router } from "express";
-import pkg from "@prisma/client";
 import { authenticate, authorize } from "../middleware/auth.js";
-import errorHandlerSentry from "../middleware/errorHandlerSentry.js";
+import * as userServices from "../services/userServices.js";
 
 const usersRouter = Router();
-const { PrismaClient } = pkg;
-const prisma = new PrismaClient();
 
-// CREATE user
-usersRouter.post("/", async (req, res, next) => {
+
+// UPSERT user (crete/update)
+usersRouter.post("/", authenticate,
+  authorize(["admin"]),async (req, res, next) => {
   try {
-    const { username, password, name, email, phoneNumber, pictureUrl } =
-      req.body;
-    const newUser = await prisma.user.create({
-      data: { username, password, name, email, phoneNumber, pictureUrl },
-    });
-
-    res.status(201).json(newUser);
+    const user = await userServices.upsertUser(req.body);
+    res.status(201).json(user);
   } catch (error) {
+    if (error.code === "P2002") return res.status(409).json({message: "Email or username already exists"})
     next(error);
   }
 });
@@ -29,19 +24,7 @@ usersRouter.get("/", async (req, res, next) => {
     const { username, email } = req.query;
 
     if (username) {
-      const user = await prisma.user.findUnique({
-        where: { username },
-        select: {
-          id: true,
-          username: true,
-          name: true,
-          email: true,
-          phoneNumber: true,
-          pictureUrl: true,
-          bookings: true,
-          reviews: true,
-        },
-      });
+      const user = await userServices.getUserByUsername(username);
 
       if (!user)
         return res
@@ -53,19 +36,7 @@ usersRouter.get("/", async (req, res, next) => {
 
     //If present, get by email
     if (email) {
-      const user = await prisma.user.findUnique({
-        where: { email: email },
-        select: {
-          id: true,
-          username: true,
-          name: true,
-          email: true,
-          phoneNumber: true,
-          pictureUrl: true,
-          bookings: true,
-          reviews: true,
-        },
-      });
+      const user = await userServices.getUserByEmail(email)
       if (!user)
         return res
           .status(404)
@@ -74,18 +45,7 @@ usersRouter.get("/", async (req, res, next) => {
     }
 
     //Return all users
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        name: true,
-        email: true,
-        phoneNumber: true,
-        pictureUrl: true,
-        bookings: true,
-        reviews: true,
-      },
-    });
+    const users = await userServices.getAllUsers()
     res.status(200).json(users);
   } catch (error) {
     next(error);
@@ -96,19 +56,7 @@ usersRouter.get("/", async (req, res, next) => {
 usersRouter.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const user = await prisma.user.findUnique({
-      where: { id: id },
-      select: {
-        id: true,
-        username: true,
-        name: true,
-        email: true,
-        phoneNumber: true,
-        pictureUrl: true,
-        bookings: true,
-        reviews: true,
-      },
-    });
+    const user = await userServices.getUserById(id)
 
     if (!user) {
       return res
@@ -130,23 +78,10 @@ usersRouter.put(
     try {
       const { id } = req.params;
       const updateData = req.body;
-      if (req.account.id !== id) {
+      if (req.account.type !== "admin" && req.account.id !== id) {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const updatedUser = await prisma.user.update({
-        where: { id: id },
-        data: updateData,
-        select: {
-          id: true,
-          username: true,
-          name: true,
-          email: true,
-          phoneNumber: true,
-          pictureUrl: true,
-          bookings: true, // optional
-          reviews: true, // optional
-        },
-      });
+      const updatedUser = await userServices.updateUser(id, updateData)
 
       res.status(200).json(updatedUser);
     } catch (error) {
@@ -163,11 +98,11 @@ usersRouter.delete(
   async (req, res, next) => {
     try {
       const { id } = req.params;
-      if (req.account.id !== id) {
+      if (req.account.type !== "admin" && req.account.id !== id) {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const user = await prisma.user.delete({ where: { id: id } });
-      if (!user) {
+      const userDeleted = await userServices.deleteUser(id)
+      if (!userDeleted) {
         res.status(404).json({ error: `User with id ${id} not found!` });
       }
       res.json({ message: "User deleted successfully" });

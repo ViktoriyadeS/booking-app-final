@@ -5,7 +5,7 @@ export const authenticate = (req,res,next) => {
     if (!authHeader) return res.status(401).json({ message: "No token provided!"})
 
     const token = authHeader.split(" ")[1]
-    const secret = process.env.AUTH_SECRETKEY || "my-secret-key"
+    const secret = process.env.AUTH_SECRET_KEY || 'my_secret_key';
 
     try {
         const decoded = jwt.verify(token,secret)
@@ -18,8 +18,13 @@ export const authenticate = (req,res,next) => {
 };
 
 export const authorize = (types = []) => (req,res,next) => {
-    if (!req.account) return res.status(401).json({ message: "Not authenticated!"})
-        if (types.length && !types.includes(req.account.type)) {
+    if (!req.account) return res.status(401).json({ message: "Not authenticated!"});
+    // Admin bypass → can access everything
+    if (req.account.type === "admin") {
+        return next();
+    }
+    // Standard user check
+    if (types.length && !types.includes(req.account.type)) {
             return res.status(403).json({ message: "Not allowed: insufficient permissions"})
         }
     next();     
