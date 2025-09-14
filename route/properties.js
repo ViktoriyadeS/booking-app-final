@@ -45,12 +45,12 @@ propertiesRouter.get("/", async (req, res, next) => {
   try {
     const { location, pricePerNight } = req.query;
     const filters = {};
-    console.log(`location: ${location}; price: ${pricePerNight}`)
+    
     if (location) {
       //partial matches allowed
       filters.location = { contains: location };
     }
-    console.log(filters)
+    
     if (pricePerNight) {
       // price = user input
       const price = Number(pricePerNight);
