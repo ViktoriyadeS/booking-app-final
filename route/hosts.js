@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth.js";
 import * as hostsServices from "../services/hostServices.js";
+import { validateRequest } from "../middleware/validateRequest.js";
 
 const hostRouter = Router();
 
@@ -9,15 +10,18 @@ hostRouter.post(
   "/",
   authenticate,
   authorize(["admin"]),
+  validateRequest(["email", "username", "password", "name", "phoneNumber", "pictureUrl", "aboutMe"]),
   async (req, res, next) => {
     try {
       const host = await hostsServices.upsertHost(req.body);
+      if (!host)
+        return res
+          .status(400)
+          .json({
+            message: "Host is not created. Probably data is incomplete",
+          });
       res.status(201).json(host);
     } catch (error) {
-      if (error.code === "P2002")
-        return res
-          .status(409)
-          .json({ message: "Email or username already exists" });
       next(error);
     }
   }
@@ -27,13 +31,9 @@ hostRouter.post(
 hostRouter.get("/", async (req, res, next) => {
   try {
     const { name } = req.query;
-    console.log(name)
-    if (name) {
+    if(name) {
       const host = await hostsServices.getHostByName(name);
-      if (!host) {
-        return res.status(404).json({ message: `Host ${name} not found!` });
-      }
-      return res.status(200).json(host); 
+      res.status(200).json(host);
     }
     //Return all hosts
     const hosts = await hostsServices.getAllHosts();
@@ -47,7 +47,6 @@ hostRouter.get("/", async (req, res, next) => {
 hostRouter.get("/:id", async (req, res, next) => {
   try {
     const host = await hostsServices.getHostById(req.params.id);
-    if (!host) return res.status(404).json({ message: "Host not found!" });
     res.json(host);
   } catch (error) {
     next(error);
@@ -61,6 +60,7 @@ hostRouter.put(
   authorize(["host"]),
   async (req, res, next) => {
     try {
+      const { id } = req.params;
       if (req.account.type !== "admin" && req.account.id !== id)
         return res.status(403).json({ message: "Forbidden" });
 
@@ -86,9 +86,6 @@ hostRouter.delete(
         return res.status(403).json({ message: " Forbidden" });
       const { id } = req.params;
       const hostDeleted = await hostsServices.deleteHostById(id);
-      if (!hostDeleted) {
-        res.status(404).json({ message: `Host with id ${id} is not found!` });
-      }
       res.json({ message: "Host deleted succesfully!" });
     } catch (error) {
       next(error);

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth.js";
 import * as reviewServices from "../services/reviewServices.js";
+import { validateRequest } from "../middleware/validateRequest.js";
 
 const reviewsRouter = Router();
 
@@ -9,9 +10,12 @@ reviewsRouter.post(
   "/",
   authenticate,
   authorize(["user"]),
+  validateRequest(["userId", "propertyId", "rating", "comment"]),
   async (req, res, next) => {
     try {
-      const review = await reviewServices.createReview()
+      const userId = req.params.id;
+      const review = await reviewServices.createReview(req.body, userId);
+
       res.status(201).json({ message: "Review is posted!" });
     } catch (error) {
       next(error);
@@ -35,12 +39,7 @@ reviewsRouter.get("/", async (req, res, next) => {
 reviewsRouter.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const review = await reviewServices.getReviewById(id)
-    if (!review) {
-      res.status(404).json({
-        message: `Review with id ${id} is not found`,
-      });
-    }
+    const review = await reviewServices.getReviewById(id);
     res.status(200).json(review);
   } catch (error) {
     next(error);
@@ -55,16 +54,13 @@ reviewsRouter.put(
   async (req, res, next) => {
     try {
       const { id } = req.params;
-      const review = await reviewServices.getReviewById(id)
-      if (!review) {
-        res.status(404).json({
-          message: `Review with id ${id} is not found`,
+      const review = await reviewServices.getReviewById(id);
+      if (req.account.type !== "admin" && review.userId !== req.account.id) {
+        return res.status(403).json({
+          message: "Unauthorized: only your own reviews can be updated",
         });
       }
-      if (req.account.type !== "admin" && review.userId !== req.account.id) {
-      return res.status(403).json({ message: "Unauthorized: only your own reviews can be updated" });
-    }
-      const updated = await reviewServices.updateReview(id, req.body)
+      const updated = await reviewServices.updateReview(id, req.body);
       res.status(200).json(updated);
     } catch (error) {
       next(error);
@@ -77,20 +73,18 @@ reviewsRouter.delete(
   "/:id",
   authenticate,
   authorize(["user"]),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
-      const review = await reviewServices.getReviewById(id)
-      if (!review) {
-        res.status(404).json({
-          message: `Review with id ${id} is not found`,
+      const review = await reviewServices.getReviewById(id);
+
+      if (req.account.type !== "admin" && review.userId !== req.account.id) {
+        return res.status(403).json({
+          message: "Unauthorized: only your own reviews can be deleted",
         });
       }
-      if (req.account.type !== "admin" && review.userId !== req.account.id) {
-      return res.status(403).json({ message: "Unauthorized: only your own reviews can be deleted" });
-    }
-      await reviewServices.deleteReview(id)
-      res.status(200).json("Review is deleted!");
+      await reviewServices.deleteReview(id);
+      return res.status(200).json("Review is deleted!");
     } catch (error) {
       next(error);
     }

@@ -18,38 +18,44 @@ export const createProperty = async (data, hostId) => {
 };
 
 //GET properties
-export const getProperties = async (filters) => {
+export const getProperties = async (filters = {}) => {
     return prisma.property.findMany({
-        where: filters,
+        where: {
+            isDeleted: false,
+            ...filters
+        },
         include: { host: true, amenities: true, bookings: true}
     })
 }
 
 //GET property by ID
 export const getPropertyById = async (id) => {
-    return prisma.property.findUnique({
-        where: {id},
-        include: {amenities: true, host: true, reviews: true, bookings: true}
+    const property = await prisma.property.findUniqueOrThrow({
+        where: {id, isDeleted: false},
+        include: {amenities: true, host: true, reviews: true, bookings: true }
     })
+    return property
 }
 
 //UPDATE property
 export const updateProperty = async (id, updateData) => {
+    await prisma.property.findUniqueOrThrow({where: {id: id}})
     return prisma.property.update({
-        where: {id},
+        where: {id, isDeleted: false},
         data: updateData
     })
 }
 
 //DELETE property
 export const deleteProperty = async (id) => {
-    return prisma.property.delete({where: {id}})
+    await prisma.property.findUniqueOrThrow({where: {id: id, isDeleted:false}})
+    return prisma.property.update({where: {id}, data: { isDeleted: true } })
 }
 
 //ADD amenities
 export const assignAmentitiesToProperty = async (propertyId, amenityNames) =>{
     const allAmenities = await prisma.amenity.findMany({
-        where: {name: {in: amenityNames}}
+        where: {name: {in: amenityNames}, isDeleted: false}
     })
 
     if (allAmenities.length < 1) return null;

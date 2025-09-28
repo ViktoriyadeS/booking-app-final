@@ -30,6 +30,7 @@ app.use(Sentry.Handlers.tracingHandler());
 app.use(log);
 app.use(express.json());
 
+
 //Routs
 app.use("/login", loginRouter);
 app.use("/users", usersRouter);

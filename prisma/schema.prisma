@@ -29,6 +29,7 @@ model User {
   email       String    @unique
   phoneNumber String?
   pictureUrl  String?
+  active      Boolean   @default(true)
   
   bookings    Booking[]
   reviews     Review[]
@@ -43,6 +44,7 @@ model Host {
   phoneNumber String?
   pictureUrl  String?
   aboutMe     String?
+  active      Boolean   @default(true)
 
   properties  Property[]
 }
@@ -57,6 +59,7 @@ model Property {
   bathRoomCount Int
   maxGuestCount Int
   rating        Int?
+  isDeleted     Boolean  @default(false)
 
   host          Host     @relation(fields: [hostId], references: [id])
   hostId        String   
@@ -67,8 +70,9 @@ model Property {
 }
 
 model Amenity {
-  id        String            @id @default(uuid())
-  name      String            @unique
+  id            String            @id @default(uuid())
+  name          String            @unique
+  isDeleted     Boolean           @default(false)
 
   properties PropertyAmenity[]
 }
@@ -77,6 +81,7 @@ model Amenity {
 model PropertyAmenity {
   propertyId String
   amenityId  String
+  isDeleted  Boolean  @default(false)
 
   property   Property @relation(fields: [propertyId], references: [id])
   amenity    Amenity  @relation(fields: [amenityId], references: [id])
@@ -93,6 +98,7 @@ model Booking {
   numberOfGuests Int
   totalPrice     Float
   bookingStatus  String
+  isDeleted      Boolean  @default(false)
 
   user     User     @relation(fields: [userId], references: [id])
   property Property @relation(fields: [propertyId], references: [id])
@@ -104,6 +110,7 @@ model Review {
   propertyId String
   rating     Int
   comment    String?
+  isDeleted  Boolean  @default(false)
 
   user     User     @relation(fields: [userId], references: [id])
   property Property @relation(fields: [propertyId], references: [id])

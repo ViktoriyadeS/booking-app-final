@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth.js";
 import * as bookingServices from "../services/bookingServices.js";
-import { getPropertyById } from "../services/propertyServices.js";
-import { getUserById } from "../services/userServices.js";
+import { validateRequest } from "../middleware/validateRequest.js";
+
 
 const bookingsRouter = Router();
 
@@ -10,49 +10,29 @@ const bookingsRouter = Router();
 bookingsRouter.post(
   "/",
   authenticate,
-  authorize(["user"]),
+  authorize(["user"]), 
+  validateRequest([
+    "userId",
+    "propertyId",
+    "checkinDate",
+    "checkoutDate",
+    "numberOfGuests",
+    "totalPrice",
+    "bookingStatus",
+  ]),
   async (req, res, next) => {
     try {
-      const { userId, propertyId, checkinDate, checkoutDate, numberOfGuests, totalPrice, bookingStatus } = req.body;
-
-      // Check: property exists
-      const property = await getPropertyById(propertyId)
-      if (!property) {
-        return res.status(404).json({ message: "Property not found" });
-      }
-
-      let bookingUserId;
-
-      if (req.account.type === "admin") {
-        // Admin can assign booking to any user
-        if (!userId) {
-          return res
-            .status(400)
-            .json({ message: "Admin must provide a userId for booking" });
-        }
-        const user = await getUserById(userId);
-        if (!user) {
-          return res.status(404).json({ message: "User not found" });
-        }
-        bookingUserId = userId;
-      } else {
-        // Users can only book for themselves
-        const user = await getUserById(req.account.id)
-        if (!user) {
-          return res.status(404).json({ message: "User not found" });
-        }
-        bookingUserId = req.account.id;
-      }
-
+      const data = req.body;
+      
       const booking = await bookingServices.createBooking({
-          userId: bookingUserId,
-          propertyId,
-          checkinDate,
-          checkoutDate,
-          numberOfGuests,
-          totalPrice,
-          bookingStatus
-        }
+        userId: data.userId,
+        propertyId: data.propertyId,
+        checkinDate: data.checkinDate,
+        checkoutDate: data.checkoutDate,
+        numberOfGuests: data.numberOfGuests,
+        totalPrice: data.totalPrice,
+        bookingStatus: data.bookingStatus
+      }
       );
 
       res.status(201).json({
@@ -84,7 +64,7 @@ bookingsRouter.get("/", async (req, res, next) => {
 bookingsRouter.get("/:id", async (req, res, next) => {
   try {
     const booking = await bookingServices.getBookingById(req.params.id);
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    //if (!booking) return res.status(404).json({ message: "Booking not found" });
     res.status(200).json(booking);
   } catch (error) {
     next(error);
@@ -99,8 +79,8 @@ bookingsRouter.put(
   async (req, res, next) => {
     try {
       const booking = await bookingServices.getBookingById(req.params.id);
-      if (!booking)
-        return res.status(404).json({ message: "Booking not found" });
+      // if (!booking)
+      //   return res.status(404).json({ message: "Booking not found" });
       if (req.account.type !== "admin" && booking.userId !== req.account.id) {
         return res
           .status(403)

@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 const loginRouter = Router();
 
 loginRouter.post("/", async (req, res, next) => {
-  const secretKey = process.env.AUTH_SECRET_KEY || 'my_secret_key';
+  const secretKey = process.env.AUTH_SECRET_KEY || "my_secret_key";
   const { username, password } = req.body;
 
   try {
@@ -55,7 +55,7 @@ loginRouter.post("/", async (req, res, next) => {
     }
 
     //When no user/host accounts found
-    res.status(404).json({ message: "Username not found!" });
+    res.status(401).json({ message: "Invalid credentials!" });
   } catch (err) {
     next(err);
   }

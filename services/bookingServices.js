@@ -1,9 +1,12 @@
 import pkg from "@prisma/client";
+
+
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
 //CREATE
 export const createBooking = async (data) => {
+  
   return prisma.booking.create({
     data: {
        user: {
@@ -23,24 +26,31 @@ export const createBooking = async (data) => {
 
 //GET all, optional: filter by userID
 export const getBookings = async (userId) => {
-  const filter = userId ? { userId } : {};
+  const filter = {
+    isDeleted: false,
+    ...(userId && { userId })
+  };
   return prisma.booking.findMany({ where: filter });
 };
 
 //GET by ID
 export const getBookingById = async (id) => {
-  return prisma.booking.findUnique({ where: { id } });
+  const booking = await prisma.booking.findUniqueOrThrow({where:{id: id, isDeleted: false}})
+  return booking
+  // return prisma.booking.findFirst({ where: { id } });
 };
 
 //UPDATE
 export const updateBooking = async (id, data) => {
+  await prisma.booking.findUniqueOrThrow({where:{id}})
   return prisma.booking.update({
-    where: { id },
+    where: { id: id, isDeleted: false},
     data,
   });
 };
 
 //DELETE
 export const deleteBooking = async (id) => {
-  return prisma.booking.delete({ where: { id } });
+  await prisma.booking.findUniqueOrThrow({where:{id}})
+  return prisma.booking.update({ where: { id }, data: { isDeleted: true } });
 };
