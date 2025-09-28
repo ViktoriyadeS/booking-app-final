@@ -1,6 +1,7 @@
 # BED Final Project Comments for Reviewer
 
 There are 3 account types: user, host, admin
+
 The automated test is adjusted so that it uses the corect login credentials in order to be able to create/update/delete.
 
 
