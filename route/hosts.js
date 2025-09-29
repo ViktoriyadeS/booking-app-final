@@ -14,12 +14,6 @@ hostRouter.post(
   async (req, res, next) => {
     try {
       const host = await hostsServices.upsertHost(req.body);
-      if (!host)
-        return res
-          .status(400)
-          .json({
-            message: "Host is not created. Probably data is incomplete",
-          });
       res.status(201).json(host);
     } catch (error) {
       next(error);
@@ -31,6 +25,7 @@ hostRouter.post(
 hostRouter.get("/", async (req, res, next) => {
   try {
     const { name } = req.query;
+
     if(name) {
       const host = await hostsServices.getHostByName(name);
       res.status(200).json(host);
@@ -83,7 +78,7 @@ hostRouter.delete(
   async (req, res, next) => {
     try {
       if (req.account.type !== "admin" && req.account.id !== id)
-        return res.status(403).json({ message: " Forbidden" });
+        return res.status(403).json({ message: "Forbidden" });
       const { id } = req.params;
       const hostDeleted = await hostsServices.deleteHostById(id);
       res.json({ message: "Host deleted succesfully!" });

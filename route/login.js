@@ -1,63 +1,23 @@
 import { Router } from "express";
-import jwt from "jsonwebtoken";
-import pkg from "@prisma/client";
+import { login } from "../services/loginServices";  
 
-const { PrismaClient } = pkg;
-const prisma = new PrismaClient();
+
 
 const loginRouter = Router();
 
 loginRouter.post("/", async (req, res, next) => {
-  const secretKey = process.env.AUTH_SECRET_KEY || "my_secret_key";
+  
   const { username, password } = req.body;
 
   try {
-    //Check users
-    let account = await prisma.user.findUnique({
-      where: { username: username },
-    });
-    if (account) {
-      if (account.password === password) {
-        const token = jwt.sign({ id: account.id, type: "user" }, secretKey, {
-          expiresIn: "1h",
-        });
-        return res.json({ message: "Succesfully logged in as a USER", token });
-      } else {
-        return res.status(401).json({ message: "Invalid credentials!" });
+    const { role, token} = await login(username, password)
+        return res.json({ message: `Succesfully logged in as a ${role}`, token });
+      
+    } catch (err) {
+      if (err.message === "Invalid credentials"){
+        return res.status(401).json({message: err.message})
       }
-    }
-
-    //Check hosts
-    account = await prisma.host.findUnique({ where: { username: username } });
-    if (account) {
-      if (account.password === password) {
-        const token = jwt.sign({ id: account.id, type: "host" }, secretKey);
-        return res.json({ message: "Succesfully logged in as a HOST!", token });
-      } else {
-        return res.status(401).json({ message: "Invalid credentials!" });
-      }
-    }
-
-    // Check admins
-    account = await prisma.admin.findUnique({ where: { username } });
-    if (account) {
-      if (account.password === password) {
-        const token = jwt.sign({ id: account.id, type: "admin" }, secretKey, {
-          expiresIn: "1h",
-        });
-        return res.json({
-          message: "Succesfully logged in as an ADMIN!",
-          token,
-        });
-      } else {
-        return res.status(401).json({ message: "Invalid credentials!" });
-      }
-    }
-
-    //When no user/host accounts found
-    res.status(401).json({ message: "Invalid credentials!" });
-  } catch (err) {
-    next(err);
+      next(err);
   }
 });
 

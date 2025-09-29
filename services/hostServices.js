@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 export const upsertHost = async (hostData) => {
   const { email, username, password, name, phoneNumber, pictureUrl, aboutMe, active} =
     hostData;
-   if (!email ) return null;
+   
    const updateData = { 
       ...(email && { email }),
       ...(username && { username }),
@@ -19,7 +19,7 @@ export const upsertHost = async (hostData) => {
       ...(pictureUrl && { pictureUrl }),
       ...(active !== undefined && { active: toBooleanConverter(active) })
     }
-    if(!username || !password || !name || !phoneNumber || !pictureUrl || !aboutMe) return null;
+    
     const createData = {
       username,
       password,
@@ -69,10 +69,7 @@ export const getAllHosts = async () => {
 
 //GET by ID
 export const getHostById = async (id) => {
-  await prisma.host.findUniqueOrThrow({ where: {id}})
-  return prisma.host.findFirst({
-    where: { id },
-    select: {
+  const host = await prisma.host.findUniqueOrThrow({ where: {id, active: true}, select: {
       id: true,
       username: true,
       name: true,
@@ -82,14 +79,14 @@ export const getHostById = async (id) => {
       aboutMe: true,
       active: true,
       properties: true,
-    },
-  });
+    },})
+  return host
 };
 
 
 //GET by Name
 export const getHostByName = async (hostName) => {
-  return prisma.host.findFirst({
+  const host = await prisma.host.findFirstOrThrow({
     where: { name: hostName },
     select: {
       id: true,
@@ -102,6 +99,7 @@ export const getHostByName = async (hostName) => {
       properties: true,
     },
   });
+  return host;
 };
 
 //UPDATE by ID

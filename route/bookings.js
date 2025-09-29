@@ -23,7 +23,7 @@ bookingsRouter.post(
   async (req, res, next) => {
     try {
       const data = req.body;
-      
+
       const booking = await bookingServices.createBooking({
         userId: data.userId,
         propertyId: data.propertyId,
@@ -64,7 +64,6 @@ bookingsRouter.get("/", async (req, res, next) => {
 bookingsRouter.get("/:id", async (req, res, next) => {
   try {
     const booking = await bookingServices.getBookingById(req.params.id);
-    //if (!booking) return res.status(404).json({ message: "Booking not found" });
     res.status(200).json(booking);
   } catch (error) {
     next(error);
@@ -79,13 +78,11 @@ bookingsRouter.put(
   async (req, res, next) => {
     try {
       const booking = await bookingServices.getBookingById(req.params.id);
-      // if (!booking)
-      //   return res.status(404).json({ message: "Booking not found" });
       if (req.account.type !== "admin" && booking.userId !== req.account.id) {
         return res
           .status(403)
           .json({
-            message: "Unauthorized: only your own bookings can be updated",
+            message: "Forbidden" ,
           });
       }
       const updated = await bookingServices.updateBooking(
@@ -107,13 +104,11 @@ bookingsRouter.delete(
   async (req, res, next) => {
     try {
       const booking = await bookingServices.getBookingById(req.params.id);
-      if (!booking)
-        return res.status(404).json({ message: "Booking not found" });
       if (req.account.type !== "admin" && booking.userId !== req.account.id) {
         return res
           .status(403)
           .json({
-            message: "Unauthorized: only your own bookings can be deleted",
+            message: "Forbidden",
           });
       }
       await bookingServices.deleteBooking(req.params.id);
