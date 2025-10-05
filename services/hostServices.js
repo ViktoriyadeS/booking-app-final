@@ -1,38 +1,24 @@
 import pkg from "@prisma/client";
-import toBooleanConverter from "../utils/converter.js";
-
 
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
 //CREATE
-export const upsertHost = async (hostData) => {
-  const { email, username, password, name, phoneNumber, pictureUrl, aboutMe, active} =
-    hostData;
-   
-   const updateData = { 
-      ...(email && { email }),
-      ...(username && { username }),
-      ...(password && { password }),
-      ...(name && { name }),
-      ...(phoneNumber && { phoneNumber }),
-      ...(pictureUrl && { pictureUrl }),
-      ...(active !== undefined && { active: toBooleanConverter(active) })
-    }
-    
-    const createData = {
-      username,
-      password,
-      name,
-      email,
-      phoneNumber,
-      pictureUrl,
-      aboutMe,
-    }
-  return prisma.host.upsert({
-    where: { email },
-    update: updateData,
-    create: createData,
+export const createHost = async (hostData) => {
+  const { email, username, password, name, phoneNumber, pictureUrl, aboutMe } = hostData;
+
+  const activeHost = await prisma.host.findFirst({
+    where: { username, active: true },
+  });
+
+  if (activeHost) {
+    throw { statusCode: 409, message: "Host with this email already exists" };
+  }
+
+  const host = await prisma.host.upsert({
+    where: { username },
+    update: { username, password, name, phoneNumber, pictureUrl, aboutMe, active: true },
+    create: { username, password, name, email, phoneNumber, pictureUrl, aboutMe },
     select: {
       id: true,
       username: true,
@@ -45,14 +31,15 @@ export const upsertHost = async (hostData) => {
       properties: true,
     },
   });
-};
 
+  return host;
+};
 
 //GET all (active)
 export const getAllHosts = async () => {
   return prisma.host.findMany({
-    where: { active: true},
-    
+    where: { active: true },
+
     select: {
       id: true,
       username: true,
@@ -66,10 +53,11 @@ export const getAllHosts = async () => {
   });
 };
 
-
 //GET by ID
 export const getHostById = async (id) => {
-  const host = await prisma.host.findUniqueOrThrow({ where: {id, active: true}, select: {
+  const host = await prisma.host.findUniqueOrThrow({
+    where: { id, active: true },
+    select: {
       id: true,
       username: true,
       name: true,
@@ -79,10 +67,10 @@ export const getHostById = async (id) => {
       aboutMe: true,
       active: true,
       properties: true,
-    },})
-  return host
+    },
+  });
+  return host;
 };
-
 
 //GET by Name
 export const getHostByName = async (hostName) => {
@@ -104,7 +92,7 @@ export const getHostByName = async (hostName) => {
 
 //UPDATE by ID
 export const updateHost = async (id, hostData) => {
-  await prisma.host.findUniqueOrThrow({ where: {id}})
+  await prisma.host.findUniqueOrThrow({ where: { id } });
   return prisma.host.update({
     where: { id: id },
     data: hostData,
@@ -123,6 +111,6 @@ export const updateHost = async (id, hostData) => {
 
 //DELETE
 export const deleteHostById = async (id) => {
-  await prisma.host.findUniqueOrThrow({where: {id}})
+  await prisma.host.findUniqueOrThrow({ where: { id } });
   return prisma.host.update({ where: { id }, data: { active: false } });
-}
+};

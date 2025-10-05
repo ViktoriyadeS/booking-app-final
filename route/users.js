@@ -5,7 +5,7 @@ import { validateRequest } from "../middleware/validateRequest.js";
 
 const usersRouter = Router();
 
-// UPSERT user (crete/update)
+// Create user 
 usersRouter.post(
   "/",
   authenticate,
@@ -13,9 +13,9 @@ usersRouter.post(
   validateRequest(["email", "username", "password", "name", "phoneNumber", "pictureUrl"]),
   async (req, res, next) => {
     try {
-      const user = await userServices.upsertUser(req.body);
-      if (!user)
-        return res.status(400).json({ error: "Missing required fields" });
+      const user = await userServices.createUser(req.body);
+      // if (!user)
+      //   return res.status(409).json({ error: "Conflict: a user with this email already exists." });
       res.status(201).json(user);
     } catch (error) {
       next(error);

@@ -28,7 +28,7 @@ async function main() {
   // --- Users ---
   for (const user of users) {
     await prisma.user.upsert({
-      where: { email: user.email },
+      where: { username: user.username },
       update: {},
       create: {
         id: user.id,
@@ -45,7 +45,7 @@ async function main() {
   // --- Hosts ---
   for (const host of hosts) {
     await prisma.host.upsert({
-      where: { email: host.email },
+      where: { username: host.username },
       update: {}, // do nothing if it exists
       create: {
         id: host.id,

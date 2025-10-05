@@ -5,7 +5,7 @@ import { validateRequest } from "../middleware/validateRequest.js";
 
 const hostRouter = Router();
 
-//UPSERT host
+//Create host
 hostRouter.post(
   "/",
   authenticate,
@@ -13,7 +13,7 @@ hostRouter.post(
   validateRequest(["email", "username", "password", "name", "phoneNumber", "pictureUrl", "aboutMe"]),
   async (req, res, next) => {
     try {
-      const host = await hostsServices.upsertHost(req.body);
+      const host = await hostsServices.createHost(req.body);
       res.status(201).json(host);
     } catch (error) {
       next(error);

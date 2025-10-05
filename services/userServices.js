@@ -1,36 +1,42 @@
 import pkg from "@prisma/client";
 import toBooleanConverter from "../utils/converter.js";
-import { validate as isUuid } from "uuid";
+
 
 const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
-export const upsertUser = async (userData) => {
-  const { email, username, password, name, phoneNumber, pictureUrl, active } =
-    userData;
-    if (!email ) return null;
-    const updateData = {
-      ...(email && { email }),
-      ...(username && { username }),
-      ...(password && { password }),
-      ...(name && { name }),
-      ...(phoneNumber && { phoneNumber }),
-      ...(pictureUrl && { pictureUrl }),
-      ...(active !== undefined && { active: toBooleanConverter(active) }),
-    };
-    if(!username || !password || !name || !phoneNumber || !pictureUrl) return null;
-    const createData = {
-      username: username,
-      password: password,
-      name: name,
-      email: email,
-      phoneNumber: phoneNumber,
-      pictureUrl: pictureUrl,
-    }
+export const createUser = async (userData) => {
+  const { email, username, password, name, phoneNumber, pictureUrl } = userData;
+
+  // First check if an active user exists
+  const activeUser = await prisma.user.findFirst({
+    where: { username, active: true },
+  });
+
+  if (activeUser) {
+    throw { statusCode: 409, message: "User with this username already exists" };
+  }
+
+  // Upsert: update inactive user or create new
   const user = await prisma.user.upsert({
-    where: { email: email },
-    update: updateData,
-    create: createData,
+    where: { username }, 
+    update: {
+      email,
+      password,
+      name,
+      phoneNumber,
+      pictureUrl,
+      active: true, // reactivate if inactive
+    },
+    create: {
+      username,
+      password,
+      name,
+      email,
+      phoneNumber,
+      pictureUrl,
+      active: true
+    },
     select: {
       id: true,
       username: true,
@@ -43,7 +49,8 @@ export const upsertUser = async (userData) => {
       reviews: true,
     },
   });
-  return user;
+
+  return user; 
 };
 
 export const getAllUsers = async () => {
@@ -98,7 +105,7 @@ export const getUserByEmail = async (email) => {
 
 export const getUserById = async (id) => {
   return prisma.user.findUniqueOrThrow({
-    where: { id: id },
+    where: { id: id, active: true },
     select: {
       id: true,
       username: true,
@@ -114,10 +121,10 @@ export const getUserById = async (id) => {
 };
 
 export const updateUser = async (id, userData) => {
-    const user = await prisma.user.findUniqueOrThrow({
-        where: {id: id}
-    })
-    const updateData = {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: id },
+  });
+  const updateData = {
     ...userData,
     ...(userData.active !== undefined && {
       active: toBooleanConverter(userData.active),
@@ -142,10 +149,10 @@ export const updateUser = async (id, userData) => {
 };
 
 export const deleteUser = async (id) => {
-    const user = await prisma.user.findUniqueOrThrow({
-        where: {id: id}
-    })
-    const deletedUser = await prisma.user.update({
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: id },
+  });
+  const deletedUser = await prisma.user.update({
     where: { id: id },
     data: { active: false },
   });

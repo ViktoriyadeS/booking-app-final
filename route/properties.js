@@ -84,7 +84,12 @@ propertiesRouter.put(
   authorize(["host"]),
   async (req, res, next) => {
     try {
-      const property = await getPropertyById(req.params.id);
+      let property;
+      try {
+        property = await getPropertyById(req.params.id);
+      } catch (err) {
+        return res.status(404).json({ message: "Property not found" });
+      }
       if (req.account.type !== "admin" && property.hostId !== req.account.id) {
         return res.status(403).json({
           message: "Forbidden: you can only update your own properties!",
@@ -105,7 +110,12 @@ propertiesRouter.delete(
   authorize(["host"]),
   async (req, res, next) => {
     try {
-      const property = await getPropertyById(req.params.id);
+      let property;
+      try {
+        property = await getPropertyById(req.params.id);
+      } catch (err) {
+        return res.status(404).json({ message: "Property not found" });
+      }
       if (property.hostId !== req.account.id && req.account.type !== "admin") {
         return res.status(403).json({
           message: "Forbidden: you can only delete your own properties!",

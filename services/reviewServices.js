@@ -6,8 +6,10 @@ const prisma = new PrismaClient();
 //CREATE
 export const createReview = async (reviewData) => {
   const { userId, propertyId, rating, comment } = reviewData;
+  if(!userId || !propertyId || !rating || !comment) return null;
+
   return prisma.review.create({
-    data: { userId, propertyId, rating, comment },
+    data: { userId: userId, propertyId: propertyId, rating: rating, comment: comment },
   });
 };
 
@@ -22,6 +24,7 @@ export const getReviews = async ({ userId, propertyId } = {}) => {
     include: { user: true, property: true },
   });
 };
+
 //GET by ID
 export const getReviewById = async (id) => {
   const review = await prisma.review.findUniqueOrThrow({where: {id: id, isDeleted: false}, include: { user: true, property: true },})
