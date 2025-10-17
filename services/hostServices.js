@@ -93,7 +93,7 @@ export const getHostById = async (id) => {
 //GET by Name
 export const getHostByName = async (hostName) => {
   const host = await prisma.host.findFirstOrThrow({
-    where: { name: hostName },
+    where: { name: hostName, active: true },
     select: {
       id: true,
       username: true,
@@ -148,7 +148,7 @@ export const updateHost = async (id, hostData) => {
 //DELETE
 export const deleteHostById = async (id) => {
   //Check if host exists
-  const host = await prisma.host.findUniqueOrThrow({ where: { id } });
+  const host = await prisma.host.findFirstOrThrow({ where: { id, active: true }});
 
   //Soft delete the host
   const updatedHost = await prisma.host.update({

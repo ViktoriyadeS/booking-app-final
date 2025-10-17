@@ -55,6 +55,7 @@ export const createUser = async (userData) => {
 
 export const getAllUsers = async () => {
   return prisma.user.findMany({
+    where: {active: true},
     select: {
       id: true,
       username: true,
@@ -71,7 +72,7 @@ export const getAllUsers = async () => {
 
 export const getUserByUsername = async (username) => {
   return prisma.user.findUniqueOrThrow({
-    where: { username },
+    where: { username , active: true},
     select: {
       id: true,
       username: true,
@@ -88,7 +89,7 @@ export const getUserByUsername = async (username) => {
 
 export const getUserByEmail = async (email) => {
   return prisma.user.findUniqueOrThrow({
-    where: { email },
+    where: { email , active: true},
     select: {
       id: true,
       username: true,
