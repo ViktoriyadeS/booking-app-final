@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 //CREATE poperty
 export const createProperty = async (data, hostId) => {
   const { hostId: _, ...rest } = data;
-  return prisma.property.create({
+  return await prisma.property.create({
     data: {
       ...rest,
       host: {
@@ -53,8 +53,8 @@ export const getProperties = async (filters = {}) => {
 
 //GET property by ID
 export const getPropertyById = async (id) => {
-  return prisma.property.findFirstOrThrow({
-    where: { id: id, isDeleted: false },
+  const propertyFound = await prisma.property.findFirstOrThrow({
+    where: { id, isDeleted: false },
     include: {
       host: {
         select: {
@@ -76,45 +76,31 @@ export const getPropertyById = async (id) => {
       },
     },
   });
+  return propertyFound;
 };
 
 //UPDATE property
 export const updateProperty = async (id, updateData) => {
-  const updatedProp = await prisma.property.updateMany({
+  const updatedProp = await prisma.property.update({
     where: { id, isDeleted: false },
     data: updateData,
   });
-  if (updatedProp.count === 0) {
-    throw { statusCode: 404, message: "Property not found" };
-  }
   // Return the updated property
-  return prisma.property.findFirstOrThrow({
-    where: { id, isDeleted: false },
-    include: {
-      host: { select: { id: true, name: true } },
-      amenities: {
-        where: { isDeleted: false },
-        include: { amenity: { select: { name: true } } },
-      },
-      _count: { select: { bookings: true } },
-    },
-  });
+  return updatedProp
+  
 };
 
 //DELETE property
 export const deleteProperty = async (id) => {
-  const delProperty = await prisma.property.updateMany({
+    const delProperty = await prisma.property.update({
     where: { id, isDeleted: false },
     data: { isDeleted: true },
   });
-  if (delProperty.count === 0) {
-    throw { statusCode: 404, message: "Property not found" };
-  }
+    return delProperty
+  };
+  
+  
 
-  return prisma.property.findFirstOrThrow({
-    where: { id, isDeleted: true },
-  });
-};
 
 //ADD amenities
 export const assignAmentitiesToProperty = async (propertyId, amenityNames) => {

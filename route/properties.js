@@ -1,13 +1,6 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth.js";
-import {
-  createProperty,
-  getProperties,
-  getPropertyById,
-  updateProperty,
-  deleteProperty,
-  assignAmentitiesToProperty,
-} from "../services/propertyServices.js";
+import * as propertyServices from "../services/propertyServices.js";
 
 const propertiesRouter = Router();
 
@@ -33,7 +26,7 @@ propertiesRouter.post(
         hostId = req.account.id;
       }
 
-      const property = await createProperty(req.body, hostId);
+      const property = await propertyServices.createProperty(req.body, hostId);
       res.status(201).json(property);
     } catch (err) {
       next(err);
@@ -60,7 +53,7 @@ propertiesRouter.get("/", async (req, res, next) => {
       }
     }
 
-    const properties = await getProperties(filters);
+    const properties = await propertyServices.getProperties(filters);
     return res.status(200).json(properties);
   } catch (err) {
     next(err);
@@ -70,7 +63,9 @@ propertiesRouter.get("/", async (req, res, next) => {
 // GET property by ID
 propertiesRouter.get("/:id", async (req, res, next) => {
   try {
-    const property = await getPropertyById(req.params.id);
+    const { id } = req.params;
+    const property = await propertyServices.getPropertyById(id);
+    //if (!property){ return res.status(404).json({ message: "Property not found" })}
     res.status(200).json(property);
   } catch (err) {
     next(err);
@@ -85,8 +80,9 @@ propertiesRouter.put(
   async (req, res, next) => {
     try {
       let property;
+      const {id} = req.params;
       try {
-        property = await getPropertyById(req.params.id);
+        property = await propertyServices.getPropertyById(id);
       } catch (err) {
         return res.status(404).json({ message: "Property not found" });
       }
@@ -95,7 +91,7 @@ propertiesRouter.put(
           message: "Forbidden: you can only update your own properties!",
         });
       }
-      const updated = await updateProperty(req.params.id, req.body);
+      const updated = await propertyServices.updateProperty(id, req.body);
       res.status(200).json(updated);
     } catch (err) {
       next(err);
@@ -112,7 +108,7 @@ propertiesRouter.delete(
     try {
       let property;
       try {
-        property = await getPropertyById(req.params.id);
+        property = await propertyServices.getPropertyById(req.params.id);
       } catch (err) {
         return res.status(404).json({ message: "Property not found" });
       }
@@ -121,7 +117,7 @@ propertiesRouter.delete(
           message: "Forbidden: you can only delete your own properties!",
         });
       }
-      await deleteProperty(req.params.id);
+      await propertyServices.deleteProperty(req.params.id);
       res.json({ message: "Property deleted" });
     } catch (err) {
       next(err);
@@ -129,7 +125,6 @@ propertiesRouter.delete(
   }
 );
 
-//Extra (not specified in assignment)
 // Assign amenities to property (host only)
 propertiesRouter.post(
   "/:id/amenities",
@@ -137,12 +132,12 @@ propertiesRouter.post(
   authorize(["host"]),
   async (req, res) => {
     try {
-      const property = await getPropertyById(req.params.id);
+      const property = await propertyServices.getPropertyById(req.params.id);
       if (property.hostId !== req.account.id) {
         return res.status(403).json({ message: "Forbidden" });
       }
       //Find all amenties by Name
-      const links = await assignAmentitiesToProperty(
+      const links = await propertyServices.assignAmentitiesToProperty(
         property.id,
         req.body.amenities
       );
