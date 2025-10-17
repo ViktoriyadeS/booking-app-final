@@ -16,6 +16,7 @@ export const createProperty = async (data, hostId) => {
   });
 };
 
+
 //GET properties
 export const getProperties = async (filters = {}) => {
   const properties = await prisma.property.findMany({
@@ -76,6 +77,9 @@ export const getPropertyById = async (id) => {
       },
     },
   });
+  if (!propertyFound){
+    return null
+  }
   return propertyFound;
 };
 

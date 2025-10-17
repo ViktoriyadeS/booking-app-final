@@ -27,8 +27,9 @@ Sentry.init({
 //Middleware
 app.use(Sentry.Handlers.requestHandler());
 app.use(Sentry.Handlers.tracingHandler());
-app.use(log);
 app.use(express.json());
+app.use(log);
+
 
 
 //Routs

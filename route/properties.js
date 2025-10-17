@@ -11,21 +11,27 @@ propertiesRouter.post(
   authorize(["host"]),
   async (req, res, next) => {
     try {
+      //reject batch create
+      if (Array.isArray(req.body.properties) || Array.isArray(req.body)) {
+        return res.status(400).json({
+          message: "You can only create one property at a time.",
+        });
+      }
       let hostId;
-
       if (req.account.type === "admin") {
         // Admin must provide hostId in body
         if (!req.body.hostId) {
           return res
             .status(400)
             .json({ message: "Admin must provide a hostId" });
+        } else {
+          hostId = req.body.hostId;
         }
-        hostId = req.body.hostId;
       } else {
         // Host uses their own ID from token
         hostId = req.account.id;
       }
-
+      //Single property creation
       const property = await propertyServices.createProperty(req.body, hostId);
       res.status(201).json(property);
     } catch (err) {
@@ -65,8 +71,12 @@ propertiesRouter.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
     const property = await propertyServices.getPropertyById(id);
-    //if (!property){ return res.status(404).json({ message: "Property not found" })}
-    res.status(200).json(property);
+    if (!property) {
+      return res.status(404).json({ message: "Property not found" });
+    } else {
+      res.status(200).json(property);
+    }
+    //res.status(200).json(property);
   } catch (err) {
     next(err);
   }
@@ -80,7 +90,7 @@ propertiesRouter.put(
   async (req, res, next) => {
     try {
       let property;
-      const {id} = req.params;
+      const { id } = req.params;
       try {
         property = await propertyServices.getPropertyById(id);
       } catch (err) {

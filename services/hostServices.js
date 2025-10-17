@@ -48,7 +48,16 @@ export const getAllHosts = async () => {
       phoneNumber: true,
       pictureUrl: true,
       aboutMe: true,
-      properties: true,
+      properties: {
+        where: { isDeleted: false }, //only include active properties
+        select: {
+          id: true,
+          title: true,
+          location: true,
+          pricePerNight: true,
+          rating: true,
+        },
+      },
     },
   });
 };
@@ -66,7 +75,16 @@ export const getHostById = async (id) => {
       pictureUrl: true,
       aboutMe: true,
       active: true,
-      properties: true,
+      properties: {
+        where: { isDeleted: false }, //only include active properties
+        select: {
+          id: true,
+          title: true,
+          location: true,
+          pricePerNight: true,
+          rating: true,
+        },
+      },
     },
   });
   return host;
@@ -84,7 +102,16 @@ export const getHostByName = async (hostName) => {
       phoneNumber: true,
       pictureUrl: true,
       active: true,
-      properties: true,
+      properties: {
+        where: { isDeleted: false }, //only include active properties
+        select: {
+          id: true,
+          title: true,
+          location: true,
+          pricePerNight: true,
+          rating: true,
+        },
+      },
     },
   });
   return host;
@@ -104,13 +131,37 @@ export const updateHost = async (id, hostData) => {
       phoneNumber: true,
       pictureUrl: true,
       active: true,
-      properties: true,
+      properties: {
+        where: { isDeleted: false }, //only include active properties
+        select: {
+          id: true,
+          title: true,
+          location: true,
+          pricePerNight: true,
+          rating: true,
+        },
+      },
     },
   });
 };
 
 //DELETE
 export const deleteHostById = async (id) => {
-  await prisma.host.findUniqueOrThrow({ where: { id } });
-  return prisma.host.update({ where: { id }, data: { active: false } });
+  //Check if host exists
+  const host = await prisma.host.findUniqueOrThrow({ where: { id } });
+
+  //Soft delete the host
+  const updatedHost = await prisma.host.update({
+    where: { id },
+    data: { active: false },
+  });
+
+  //Soft delete all properties belonging to this host
+  await prisma.property.updateMany({
+    where: { hostId: id },
+    data: { isDeleted: true },
+  });
+
+  //Return the updated host info
+  return updatedHost;
 };

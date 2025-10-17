@@ -2,7 +2,6 @@ import * as Sentry from "@sentry/node";
 import { Prisma } from "@prisma/client";
 
 const errorHandlerSentry = (err, req, res, next) => {
-  //console.error(err);
   Sentry.captureException(err);
   if (err.code === "P2025") {
     return res.status(404).json({ error: "Resource not found" });
